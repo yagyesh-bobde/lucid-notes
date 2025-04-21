@@ -122,7 +122,7 @@ export default function Dashboard() {
         <main className="flex-1 md:p-12 p-4 overflow-y-auto bg-background">
           <div className="flex items-center justify-between mb-8">
             <h2 className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">Your Notes</h2>
-            <ThemeToggle />
+            {/* <ThemeToggle /> */}
           </div>
           
           <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">

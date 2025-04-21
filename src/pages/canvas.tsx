@@ -36,7 +36,7 @@ export default function CanvasPage() {
         <main className="flex-1 md:p-6 p-2 overflow-hidden bg-background flex flex-col">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">Ideation Canvas</h2>
-            <ThemeToggle />
+            {/* <ThemeToggle /> */}
           </div>
           
           {/* Canvas content area */}

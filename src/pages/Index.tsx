@@ -16,9 +16,9 @@ export default function Index() {
         {/* Hero Section */}
         <section className="relative flex-1 flex flex-col items-center justify-center bg-gradient-to-tr from-primary/40 to-secondary/80 py-32 px-4 text-center overflow-hidden">
           {/* Theme toggle in the top right */}
-          <div className="absolute top-4 right-4 z-10">
+          {/* <div className="absolute top-4 right-4 z-10">
             <ThemeToggle />
-          </div>
+          </div> */}
           {/* Decorative background gradients/animated blobs */}
           <div className="absolute -top-20 -left-20 w-60 h-60 bg-gradient-to-br from-primary via-emerald-200 to-secondary rounded-full blur-2xl opacity-40 animate-float-bubble" />
           <div className="absolute bottom-0 right-0 w-64 h-64 bg-gradient-to-tr from-accent/60 via-secondary to-primary/30 rounded-full blur-2xl opacity-30 animate-float-bubble" style={{ animationDelay: "0.75s" }} />
