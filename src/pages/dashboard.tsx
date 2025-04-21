@@ -1,3 +1,4 @@
+// src/pages/dashboard.tsx
 import React, { useState, useEffect } from "react";
 import { AppSidebar } from "@/components/layout/Sidebar";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -9,7 +10,8 @@ import { NoteCard } from "@/components/note-card";
 import { NoteEditor } from "@/components/note-editor";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { toast } from "@/components/ui/sonner";
-import { NotesService, Note, CreateNoteInput, UpdateNoteInput } from "@/lib/notes-service";
+import { Note, CreateNoteInput, UpdateNoteInput } from "@/lib/notes-service";
+import { useNotes } from "@/hooks/useNotes";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,15 +25,26 @@ import {
 
 export default function Dashboard() {
   const { user, loading } = useAuthProfile();
-  const [notes, setNotes] = useState<Note[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
   const [editorMode, setEditorMode] = useState<'create' | 'edit'>('create');
   const navigate = useNavigate();
+  
+  // Use our React Query hook for notes data
+  const {
+    notes,
+    isLoading,
+    refetch,
+    createNote,
+    updateNote,
+    deleteNote,
+    isCreating,
+    isUpdating,
+    isDeleting
+  } = useNotes();
   
   // Check authentication and redirect if not logged in
   useEffect(() => {
@@ -40,73 +53,6 @@ export default function Dashboard() {
       navigate("/auth");
     }
   }, [user, loading, navigate]);
-  
-  // Fetch notes from Supabase
-  const fetchNotes = async () => {
-    if (!user) return;
-    
-    try {
-      setIsLoading(true);
-      const fetchedNotes = await NotesService.getNotes();
-      setNotes(fetchedNotes);
-    } catch (error) {
-      console.error("Error fetching notes:", error);
-      toast.error("Failed to load notes");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-  // Load notes on initial render
-  useEffect(() => {
-    if (user) {
-      fetchNotes();
-    }
-  }, [user]);
-  
-  // Handle note creation
-  const handleCreateNote = async (data: CreateNoteInput) => {
-    try {
-      const newNote = await NotesService.createNote(data);
-      if (newNote) {
-        fetchNotes(); // Refresh the notes list
-      }
-    } catch (error) {
-      console.error("Error creating note:", error);
-      toast.error("Failed to create note");
-    }
-  };
-  
-  // Handle note update
-  const handleUpdateNote = async (data: UpdateNoteInput) => {
-    try {
-      const updatedNote = await NotesService.updateNote(data);
-      if (updatedNote) {
-        fetchNotes(); // Refresh the notes list
-      }
-    } catch (error) {
-      console.error("Error updating note:", error);
-      toast.error("Failed to update note");
-    }
-  };
-  
-  // Handle note deletion
-  const handleDeleteNote = async () => {
-    if (!noteToDelete) return;
-    
-    try {
-      const success = await NotesService.deleteNote(noteToDelete);
-      if (success) {
-        fetchNotes(); // Refresh the notes list
-      }
-    } catch (error) {
-      console.error("Error deleting note:", error);
-      toast.error("Failed to delete note");
-    } finally {
-      setIsDeleteDialogOpen(false);
-      setNoteToDelete(null);
-    }
-  };
   
   // Open the editor to create a new note
   const openCreateEditor = () => {
@@ -124,10 +70,15 @@ export default function Dashboard() {
   
   // Handle save from the editor
   const handleSaveNote = async (data: CreateNoteInput | UpdateNoteInput) => {
-    if ('id' in data) {
-      await handleUpdateNote(data);
-    } else {
-      await handleCreateNote(data);
+    try {
+      if ('id' in data) {
+        updateNote(data);
+      } else {
+        createNote(data);
+      }
+      setIsEditorOpen(false);
+    } catch (error) {
+      console.error("Error saving note:", error);
     }
   };
   
@@ -137,13 +88,22 @@ export default function Dashboard() {
     setIsDeleteDialogOpen(true);
   };
   
+  // Handle delete confirmation
+  const handleDeleteNote = () => {
+    if (noteToDelete) {
+      deleteNote(noteToDelete);
+      setIsDeleteDialogOpen(false);
+      setNoteToDelete(null);
+    }
+  };
+  
   // Filter notes based on search term
   const filteredNotes = notes.filter(note => 
     note.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
     note.content.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // If still loading, show a loading state
+  // If auth is still loading, show a loading state
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -177,7 +137,7 @@ export default function Dashboard() {
             </div>
             <div className="flex gap-2 w-full sm:w-auto">
               <Button 
-                onClick={fetchNotes} 
+                onClick={() => refetch()} 
                 variant="outline" 
                 size="icon" 
                 className="h-9 w-9"
@@ -227,7 +187,7 @@ export default function Dashboard() {
                   note={note}
                   onEdit={openEditEditor}
                   onDelete={confirmDelete}
-                  onRefresh={fetchNotes}
+                  onRefresh={() => refetch()}
                 />
               ))}
             </div>

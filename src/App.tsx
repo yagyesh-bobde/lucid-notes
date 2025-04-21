@@ -1,10 +1,9 @@
-
-// Register routes for new canvas page and use ThemeProvider at root
-
+// src/App.tsx
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "./components/theme-provider";
 import Index from "./pages/Index";
@@ -13,7 +12,16 @@ import Dashboard from "./pages/dashboard";
 import CanvasPage from "./pages/canvas";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+// Configure the query client with appropriate defaults
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 1,
+      staleTime: 1000 * 60 * 5, // 5 minutes
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -33,6 +41,8 @@ const App = () => (
         </BrowserRouter>
       </TooltipProvider>
     </ThemeProvider>
+    {/* Add React Query Devtools for development */}
+    {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
   </QueryClientProvider>
 );
 

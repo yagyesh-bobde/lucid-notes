@@ -3,15 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { summarizeText } from "@/lib/gemini";
 import { toast } from "@/components/ui/sonner";
-import { NotesService, Note } from "@/lib/notes-service";
-import { MoreHorizontal, Edit, Trash, ExternalLink } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Note, NotesService } from "@/lib/notes-service";
+import { Edit, Trash } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { NOTES_QUERY_KEY } from "@/hooks/useNotes";
 
 interface NoteCardProps {
   note: Note;
@@ -23,7 +19,8 @@ interface NoteCardProps {
 export function NoteCard({ note, onEdit, onDelete, onRefresh }: NoteCardProps) {
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [showSummary, setShowSummary] = useState(!!note.summary);
-  
+  const queryClient = useQueryClient();
+
   // Format the date for display
   const getFormattedDate = (dateString: string) => {
     try {
@@ -32,6 +29,38 @@ export function NoteCard({ note, onEdit, onDelete, onRefresh }: NoteCardProps) {
       return dateString;
     }
   };
+
+  // Create a mutation for summarizing text
+  const summarizeMutation = useMutation({
+    mutationFn: async () => {
+      // If we already have a saved summary, just display it
+      if (note.summary) {
+        return { summary: note.summary };
+      }
+      
+      // Generate a new summary using Gemini
+      const summary = await summarizeText(note.content, { maxLength: 75 });
+      
+      // Save the summary using the NotesService
+      const success = await NotesService.saveSummary(note.id, summary);
+      
+      if (!success) {
+        throw new Error('Failed to save summary');
+      }
+      
+      return { summary };
+    },
+    onSuccess: (data) => {
+      // Invalidate and refetch notes query to get the updated data
+      queryClient.invalidateQueries({ queryKey: [NOTES_QUERY_KEY] });
+      onRefresh(); // Refresh the notes list to get the updated note with summary
+      setShowSummary(true);
+    },
+    onError: (error) => {
+      console.error("Error summarizing note:", error);
+      toast.error("Failed to generate summary. Please try again.");
+    },
+  });
 
   const handleSummarize = async () => {
     if (isSummarizing) return;
@@ -44,17 +73,9 @@ export function NoteCard({ note, onEdit, onDelete, onRefresh }: NoteCardProps) {
         return;
       }
       
-      // Generate a new summary using Gemini
-      const summary = await summarizeText(note.content, { maxLength: 75 });
+      // Otherwise, trigger the mutation to generate and save the summary
+      await summarizeMutation.mutateAsync();
       
-      // Save the generated summary to the database
-      const success = await NotesService.saveSummary(note.id, summary);
-      
-      if (success) {
-        // If successful, refresh the note list to get the updated note with summary
-        onRefresh();
-        setShowSummary(true);
-      }
     } catch (error) {
       console.error("Error summarizing note:", error);
       toast.error("Failed to generate summary. Please try again.");
@@ -105,9 +126,9 @@ export function NoteCard({ note, onEdit, onDelete, onRefresh }: NoteCardProps) {
             variant="outline" 
             size="sm" 
             onClick={handleSummarize} 
-            disabled={isSummarizing}
+            disabled={isSummarizing || summarizeMutation.isPending}
           >
-            {isSummarizing ? "Summarizing..." : note.summary ? "Show Summary" : "Summarize"}
+            {isSummarizing || summarizeMutation.isPending ? "Summarizing..." : note.summary ? "Show Summary" : "Summarize"}
           </Button>
         )}
       </CardFooter>
